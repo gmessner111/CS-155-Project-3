@@ -383,6 +383,49 @@ class HiddenMarkovModel:
             states.append(s)
 
         return emission, states
+    
+    def generate_sonnet(self, idx_to_word, syllable_dict):
+        punctuation = [',','.',':',';','!','?']
+        sonnet = ''
+        state = random.choice(range(self.L))
+        for i in range(14):
+            
+            num_syllables = 0
+            while (num_syllables != 10):
+                emission_idx = random.choices(range(self.D), weights=self.O[state])[0]
+                emission_word = idx_to_word[emission_idx]
+                if emission_word in punctuation:
+                    if num_syllables == 0 or sonnet[-2] in punctuation:
+                        continue
+                    else:
+                        sonnet = sonnet[:-1]
+                if (num_syllables + int(syllable_dict[emission_word][-1]) <= 10):
+                    if num_syllables == 0:
+                        if len(emission_word) > 1:
+                            sonnet += emission_word[0].upper() + emission_word[1:] + ' '
+                        else:
+                            sonnet += emission_word.upper() + ' '
+                    else:
+                        if emission_word == 'i':
+                            emission_word = 'I'
+                        sonnet += emission_word + ' '
+                    if emission_word == 'I':
+                        emission_word = 'i'
+                    num_syllables += int(syllable_dict[emission_word][-1])
+                    state = random.choices(range(self.L), weights=self.A[state])[0]
+            
+            sonnet += '\n'
+        sonnet = sonnet[:-2] + '.'
+        
+        for i in range(2,len(sonnet)):
+            prev = sonnet[i-2]
+            if prev == '.' or prev == '?' or prev == '!':
+                if i+1 < len(sonnet):
+                    sonnet = sonnet[:i] + sonnet[i].upper() + sonnet[i+1:]
+                else:
+                    sonnet = sonnet[:i] + sonnet[i].upper()
+        return sonnet
+        
 
 
     def probability_alphas(self, x):
@@ -515,7 +558,6 @@ def unsupervised_HMM(X, n_states, N_iters):
     D = len(observations)
 
     # Randomly initialize and normalize matrix A.
-    random.seed(2020)
     A = [[random.random() for i in range(L)] for j in range(L)]
 
     for i in range(len(A)):
@@ -524,7 +566,6 @@ def unsupervised_HMM(X, n_states, N_iters):
             A[i][j] /= norm
     
     # Randomly initialize and normalize matrix O.
-    random.seed(155)
     O = [[random.random() for i in range(D)] for j in range(L)]
 
     for i in range(len(O)):
