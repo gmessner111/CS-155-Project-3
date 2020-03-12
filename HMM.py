@@ -384,7 +384,7 @@ class HiddenMarkovModel:
 
         return emission, states
     
-    def generate_sonnet(self, idx_to_word, syllable_dict):
+    def generate_sonnet(self, idx_to_word, syllable_dict, filename):
         punctuation = [',','.',':',';','!','?']
         sonnet = ''
         state = random.choice(range(self.L))
@@ -424,7 +424,56 @@ class HiddenMarkovModel:
                     sonnet = sonnet[:i] + sonnet[i].upper() + sonnet[i+1:]
                 else:
                     sonnet = sonnet[:i] + sonnet[i].upper()
+        
+        with open(filename, "w") as f:
+            f.write(sonnet)
+            f.write('\n\n')
         return sonnet
+    
+    def generate_haiku(self, idx_to_word, syllable_dict, filename):
+        punctuation = [',','.',':',';','!','?']
+        haiku = ''
+        state = random.choice(range(self.L))
+        for i in range(3):
+            num_syllables = 0
+            line_syllables = 5 if i % 2 == 0 else 7
+            while (num_syllables != line_syllables):
+                emission_idx = random.choices(range(self.D), weights=self.O[state])[0]
+                emission_word = idx_to_word[emission_idx]
+                if emission_word in punctuation:
+                    if num_syllables == 0 or haiku[-2] in punctuation:
+                        continue
+                    else:
+                        haiku = haiku[:-1]
+                if (num_syllables + int(syllable_dict[emission_word][-1]) <= line_syllables):
+                    if num_syllables == 0:
+                        if len(emission_word) > 1:
+                            haiku += emission_word[0].upper() + emission_word[1:] + ' '
+                        else:
+                            haiku += emission_word.upper() + ' '
+                    else:
+                        if emission_word == 'i':
+                            emission_word = 'I'
+                        haiku += emission_word + ' '
+                    if emission_word == 'I':
+                        emission_word = 'i'
+                    num_syllables += int(syllable_dict[emission_word][-1])
+                    state = random.choices(range(self.L), weights=self.A[state])[0]
+            
+            haiku += '\n'
+        
+        for i in range(2,len(haiku)):
+            prev = haiku[i-2]
+            if prev == '.' or prev == '?' or prev == '!':
+                if i+1 < len(haiku):
+                    haiku = haiku[:i] + haiku[i].upper() + haiku[i+1:]
+                else:
+                    haiku = haiku[:i] + haiku[i].upper()
+        
+        with open(filename, "w") as f:
+            f.write(haiku)
+            f.write('\n\n')
+        return haiku
         
 
 
@@ -531,7 +580,7 @@ def supervised_HMM(X, Y):
 
     return HMM
 
-def unsupervised_HMM(X, n_states, N_iters):
+def unsupervised_HMM(X, n_states, N_iters, D=0):
     '''
     Helper function to train an unsupervised HMM. The function determines the
     number of unique observations in the given data, initializes
@@ -555,7 +604,8 @@ def unsupervised_HMM(X, n_states, N_iters):
     
     # Compute L and D.
     L = n_states
-    D = len(observations)
+    if D == 0:
+        D = len(observations)
 
     # Randomly initialize and normalize matrix A.
     A = [[random.random() for i in range(L)] for j in range(L)]
