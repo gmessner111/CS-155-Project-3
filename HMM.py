@@ -385,38 +385,62 @@ class HiddenMarkovModel:
         return emission, states
     
     def generate_sonnet(self, idx_to_word, syllable_dict, filename):
+        '''
+        Generates a sonnet from a trained unsupervised HMM.
+        
+        returns: string which represents a sonnet
+        '''
         punctuation = [',','.',':',';','!','?']
         sonnet = ''
+        
+        # Start in a random state
         state = random.choice(range(self.L))
+        
+        # 14 lines per sonnet
         for i in range(14):
-            
+            # We chose to enforce the syllable count from the beginning so keep
+            # track of line syllables that have already accrued
             num_syllables = 0
             while (num_syllables != 10):
+                # Choose a random emmission according to the emission matrix
+                # probabilities
                 emission_idx = random.choices(range(self.D), weights=self.O[state])[0]
+                # Get the corresponding word
                 emission_word = idx_to_word[emission_idx]
                 if emission_word in punctuation:
+                    # remove multiple punctuation and punctuation to start a 
+                    # new line
                     if num_syllables == 0 or sonnet[-2] in punctuation:
                         continue
                     else:
+                        # Keeping punctuation so get rid of last space
                         sonnet = sonnet[:-1]
                 if (num_syllables + int(syllable_dict[emission_word][-1]) <= 10):
+                    # We can add this word
                     if num_syllables == 0:
+                        # Capitalize the first word of every line
                         if len(emission_word) > 1:
                             sonnet += emission_word[0].upper() + emission_word[1:] + ' '
                         else:
                             sonnet += emission_word.upper() + ' '
                     else:
+                        # I should always be capitalized
                         if emission_word == 'i':
                             emission_word = 'I'
                         sonnet += emission_word + ' '
                     if emission_word == 'I':
                         emission_word = 'i'
+                    
+                    # increase syllable count and move to next state
                     num_syllables += int(syllable_dict[emission_word][-1])
                     state = random.choices(range(self.L), weights=self.A[state])[0]
             
+            # Start next line
             sonnet += '\n'
+        # End with a period
         sonnet = sonnet[:-2] + '.'
         
+        # Go through and capitalize after .!?
         for i in range(2,len(sonnet)):
             prev = sonnet[i-2]
             if prev == '.' or prev == '?' or prev == '!':
@@ -425,20 +449,30 @@ class HiddenMarkovModel:
                 else:
                     sonnet = sonnet[:i] + sonnet[i].upper()
         
+        # Write the sonnet to the specified file
         with open(filename, "w") as f:
             f.write(sonnet)
             f.write('\n\n')
         return sonnet
     
     def generate_haiku(self, idx_to_word, syllable_dict, filename):
+        '''
+        Generates a haiku from a trained unsupervised HMM.
+        
+        returns: string which represents a haiku
+        '''
         punctuation = [',','.',':',';','!','?']
         haiku = ''
+        # Start in a random state
         state = random.choice(range(self.L))
         for i in range(3):
+            # Enforce syllable counts on lines
             num_syllables = 0
             line_syllables = 5 if i % 2 == 0 else 7
             while (num_syllables != line_syllables):
+                # Choose emission from probabilities of emission matrix
                 emission_idx = random.choices(range(self.D), weights=self.O[state])[0]
+                # Get word
                 emission_word = idx_to_word[emission_idx]
                 if emission_word in punctuation:
                     if num_syllables == 0 or haiku[-2] in punctuation:
